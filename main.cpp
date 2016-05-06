@@ -16,6 +16,7 @@
 #include "opencv2/core.hpp"
 #include "opencv2/features2d.hpp"
 #include "opencv2/xfeatures2d.hpp"
+#include "opencv2/calib3d.hpp"
 //C
 #include <stdio.h>
 //C++
@@ -47,6 +48,9 @@ vector<KeyPoint> previousKeypoints;
 Mat previousDescriptor;
 
 Mat matchedDescriptor;
+
+vector< Mat > vImg;
+cv::Mat result;
 
 //function declaration
 void help();
@@ -197,12 +201,12 @@ void processVideo(char* videoFilename) {
             //-- Quick calculation of max and min distances between keypoints
             for( int i = 0; i < descriptor.rows; i++ )
             { double dist = matches[i].distance;
-                cout << dist << endl;
+                // cout << dist << endl;
                 if( dist < min_dist ) min_dist = dist;
                 if( dist > max_dist ) max_dist = dist;
             }
-            printf("-- Max dist : %f \n", max_dist );
-            printf("-- Min dist : %f \n", min_dist );
+            // printf("-- Max dist : %f \n", max_dist );
+            // printf("-- Min dist : %f \n", min_dist );
             //-- Draw only "good" matches (i.e. whose distance is less than 2*min_dist,
             //-- or a small arbitary value in the event that min_dist is very
             //-- small)
@@ -224,16 +228,16 @@ void processVideo(char* videoFilename) {
                 { good_matches.push_back( matches[i]); }
             }
             //-- Draw only "good" matches
-            Mat img_matches;
+            Mat result;
             drawMatches( frame, keypoints, previousFrame, previousKeypoints,
-                good_matches, img_matches, Scalar::all(-1), Scalar::all(-1),
+                good_matches, result, Scalar::all(-1), Scalar::all(-1),
                 vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
-                //-- Resize and show detected matches
-                Size targetSize(img_matches.size().width*SCALE, img_matches.size().height*SCALE);
-                resize(img_matches, img_matches, targetSize);
-                imshow( "Good Matches", img_matches );
-                for( int i = 0; i < (int)good_matches.size(); i++ )
-                { printf( "-- Good Match [%d] Keypoint 1: %d  -- Keypoint 2: %d  \n", i, good_matches[i].queryIdx, good_matches[i].trainIdx ); }
+                // //-- Resize and show detected matches
+                // Size targetSize(result.size().width*SCALE, result.size().height*SCALE);
+                // resize(result, result, targetSize);
+                // imshow( "Good Matches", result );
+                // for( int i = 0; i < (int)good_matches.size(); i++ )
+                // { printf( "-- Good Match [%d] Keypoint 1: %d  -- Keypoint 2: %d  \n", i, good_matches[i].queryIdx, good_matches[i].trainIdx ); }
 
 
                 //-- Store matched keypoints
@@ -251,8 +255,8 @@ void processVideo(char* videoFilename) {
                         }
                     }
                 }
-                cout << frameNumberString << ": MatchedKeypointsNum = " << matchedKeypoints.size() << endl;
-                detector->detectAndCompute( frame, Mat(), matchedKeypoints, matchedDescriptor);
+                // cout << frameNumberString << ": MatchedKeypointsNum = " << matchedKeypoints.size() << endl;
+                // detector->detectAndCompute( frame, Mat(), matchedKeypoints, matchedDescriptor);
                 // cout << "descriptor size = " << matchedDescriptor.rows << " " << matchedDescriptor.cols << endl;
                 // fout << matchedDescriptor << endl;
 
@@ -267,13 +271,22 @@ void processVideo(char* videoFilename) {
                 // capture.release();
                 // return;
 
+                std::vector< Point2f > obj;
+                std::vector< Point2f > scene;
+                cv::KeyPoint::convert	(	matchedKeypoints, obj, std::vector< int >()                 )	;
+                cv::KeyPoint::convert	(	previousMatchedKeypoints, scene, std::vector< int >()                 )	;
+
                 // Find the Homography Matrix
-                Mat H = findHomography( previousFrame, frame, CV_RANSAC );
+                Mat H = findHomography( obj, scene, CV_RANSAC );
                 // Use the Homography Matrix to warp the images
-                cv::Mat result;
-                warpPerspective(previousFrame,result,H,cv::Size(previousFrame.cols+frame.cols,previousFrame.rows));
-                cv::Mat half(result,cv::Rect(0,0,image2.cols,image2.rows));
-                image2.copyTo(half);
+
+                warpPerspective(frame,result,H,cv::Size(frame.cols+previousFrame.cols,frame.rows));
+                cv::Mat half(result,cv::Rect(0,0,previousFrame.cols,previousFrame.rows));
+                previousFrame.copyTo(half);
+                cv::Mat show;
+                Size targetSize(result.size().width*SCALE, result.size().height*SCALE);
+                // Size targetSize(600, 800);
+                resize(result, show, targetSize);
                 imshow( "Result", result );
 
             }
