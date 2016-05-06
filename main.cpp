@@ -209,7 +209,7 @@ void processVideo(char* videoFilename) {
             //-- PS.- radiusMatch can also be used here.
             double arbitaryValue;
             #if MODE == 0
-            arbitaryValue = 25.0;
+            arbitaryValue = 0.05;
             #endif
             #if MODE == 1
             arbitaryValue = 0.02;
