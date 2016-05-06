@@ -238,10 +238,16 @@ void processVideo(char* videoFilename) {
 
                 //-- Store matched keypoints
                 vector<KeyPoint> matchedKeypoints;
+                vector<KeyPoint> previousMatchedKeypoints;
                 for( int i = 0; i < (int)good_matches.size(); i++ ) {
                     for (int j = 0; j < keypoints.size(); j++) {
                         if (good_matches[i].queryIdx == j) {
-                            matchedKeypoints.push_back(keypoints[i]);
+                            matchedKeypoints.push_back(keypoints[j]);
+                        }
+                    }
+                    for (int j = 0; j < previousKeypoints.size(); j++) {
+                        if (good_matches[i].trainIdx == j) {
+                            previousMatchedKeypoints.push_back(previousKeypoints[j]);
                         }
                     }
                 }
@@ -251,21 +257,30 @@ void processVideo(char* videoFilename) {
                 // fout << matchedDescriptor << endl;
 
 
-                //TODO Output only one descriptor
-                string outputFile = string(OUTPUT_FOLDER) + featureMode + "/" + string(videoId) + ".yml";
-                cout << "outputFileName = " << outputFile << endl;
-                cv::FileStorage fs(outputFile.c_str(), cv::FileStorage::WRITE);
-                fs << "Mat" + string(videoId) << matchedDescriptor;
-                fs.release();
-                keyboard = waitKey( 1000 );
-                capture.release();
-                return;
+                // //TODO Output only one descriptor
+                // string outputFile = string(OUTPUT_FOLDER) + featureMode + "/" + string(videoId) + ".yml";
+                // cout << "outputFileName = " << outputFile << endl;
+                // cv::FileStorage fs(outputFile.c_str(), cv::FileStorage::WRITE);
+                // fs << "Mat" + string(videoId) << matchedDescriptor;
+                // fs.release();
+                // keyboard = waitKey( 1000 );
+                // capture.release();
+                // return;
+
+                // Find the Homography Matrix
+                Mat H = findHomography( previousFrame, frame, CV_RANSAC );
+                // Use the Homography Matrix to warp the images
+                cv::Mat result;
+                warpPerspective(previousFrame,result,H,cv::Size(previousFrame.cols+frame.cols,previousFrame.rows));
+                cv::Mat half(result,cv::Rect(0,0,image2.cols,image2.rows));
+                image2.copyTo(half);
+                imshow( "Result", result );
 
             }
             previousFrame = frame;
 
             //get the input from the keyboard
-            // keyboard = waitKey( 0 );
+            keyboard = waitKey( 0 );
         }
         //delete capture object
         capture.release();
